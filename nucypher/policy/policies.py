@@ -219,7 +219,7 @@ class Policy(ABC):
         self.label = label
         self.bob = bob
         self.kfrags = kfrags
-        self.public_key = public_key
+        self.public_key = public_key or self.alice.stamp
         self.expiration = expiration
 
         self._id = construct_policy_id(self.label, bytes(self.bob.stamp))
@@ -238,7 +238,7 @@ class Policy(ABC):
         Alice and Bob have all the information they need to construct this.
         Ursula does not, so we share it with her.
         """
-        self.hrac = keccak_digest(bytes(self.alice.stamp) + bytes(self.bob.stamp) + self.label)[:HRAC_LENGTH]
+        self.hrac = keccak_digest(bytes(self.public_key) + bytes(self.bob.stamp) + self.label)[:HRAC_LENGTH]
 
     def __repr__(self):
         return f"{self.__class__.__name__}:{self._id.hex()[:6]}"

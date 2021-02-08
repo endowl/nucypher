@@ -236,8 +236,13 @@ class Alice(Character, BlockchainPolicyAuthor):
         policy_params = self.generate_policy_parameters(**policy_params)
         N = policy_params.pop('n')
 
-        # Generate KFrags
-        public_key, kfrags = self.generate_kfrags(bob=bob,
+        pk = policy_params.get('public_key')
+        frags = policy_params.get('kfrags')
+        if pk and frags:
+            public_key = pk
+            kfrags = frags
+        else:
+            public_key, kfrags = self.generate_kfrags(bob=bob,
                                                   label=label,
                                                   m=policy_params['m'],
                                                   n=N)
