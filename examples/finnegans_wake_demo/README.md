@@ -35,12 +35,14 @@ This is an attempt to illustrate how to have a semi-trusted intermediary set up 
 6. Bob joins the policy, gets the asset reencrypted, decrypts.
 
 ## Environmental Variables
+```shell script
 PYTHONUNBUFFERED=1
 NUCYPHER_PROVIDER_URI=https://goerli.infura.io/v3/b70fd2516d87475b9974ece2234dd085
 ALICE_SIGNER_URI=keystore:///Users/ken/.keystore/UTC--2021-02-10T01-35-19.992885000Z--22003c7d9fc169d92d695872a04caca6a064f0a8
 ALICE_ETH_ADDRESS=0x22003c7d9fc169D92D695872A04CACa6a064F0a8
 MITCHEL_SIGNER_URI=keystore:///Users/ken/.keystore/UTC--2021-02-10T01-37-01.441683000Z--502c8f0d22a4495b17bfba9dc9b7a9623db693a2
 MITCHEL_ETH_ADDRESS=0x502C8f0D22a4495b17Bfba9dC9b7A9623DB693A2
+```
 
 ## Changed functions
 File: lawful
@@ -52,7 +54,7 @@ function: create_policy()
 ## Issues
 Failing on step 5 during policy enactment. Here's the log:
 
-```
+```text
 Proposing arrangement Arrangement(client_key=UmbralPublicKey:03c635a58d0717e) to (Ursula)⇀DarkCyan Charlie WhiteSmoke November↽ (0xecB5105846Fd77416550460c71f7fab9f1cfbeba)
 Arrangement accepted by (Ursula)⇀LimeGreen Five Linen Eight↽ (0x542D4b7f72Cddf9cF020602CA1c9d58482ec3254)
 Arrangement accepted by (Ursula)⇀Plum Two Olive Quebec↽ (0xd46db4b93271CC73CA4D920ba017982d42E263BA)
