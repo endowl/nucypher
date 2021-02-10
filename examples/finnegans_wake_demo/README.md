@@ -71,3 +71,5 @@ Policy enactment failed. Request statuses:
 ```
 
 An example of the Arrangement tx can be viewed at https://goerli.etherscan.io/tx/0xab15bc7f126f7affdced82633679d755fb5bd599d0bae006fccee57d27df7abf.
+
+Also, if grantor is changed to ALICE on line #198 and lines 172-194 are commented, the code works as expected.
