@@ -235,6 +235,7 @@ class Alice(Character, BlockchainPolicyAuthor):
 
         pk = policy_params.pop('public_key', None)
         frags = policy_params.pop('kfrags', None)
+        alice = policy_params.pop('alice', self)
 
         policy_params = self.generate_policy_parameters(**policy_params)
         N = policy_params.pop('n')
@@ -258,13 +259,13 @@ class Alice(Character, BlockchainPolicyAuthor):
         if self.federated_only:
             # Use known nodes
             from nucypher.policy.policies import FederatedPolicy
-            policy = FederatedPolicy(alice=self, **payload)
+            policy = FederatedPolicy(alice=alice, **payload)
 
         else:
             # Sample from blockchain PolicyManager
             from nucypher.policy.policies import BlockchainPolicy
             payload.update(**policy_params)
-            policy = BlockchainPolicy(alice=self, **payload)
+            policy = BlockchainPolicy(alice=alice, **payload)
 
         return policy
 

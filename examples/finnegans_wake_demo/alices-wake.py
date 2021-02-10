@@ -193,7 +193,8 @@ MITCHEL = Alice(
     client_password=mitchel_password
     )
 
-
+#
+# ALICE.transacting_power.activate(alice_password)
 grantor = MITCHEL
 
 policy = grantor.grant(BOB,
@@ -204,6 +205,7 @@ policy = grantor.grant(BOB,
                        rate=Web3.toWei(50, 'gwei'),
                        public_key=policy_info['public_key'],
                        kfrags=policy_info['kfrags'],
+                       # alice=ALICE,
                        )
 
 # assert policy.public_key == policy_info['public_key']
