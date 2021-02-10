@@ -112,23 +112,6 @@ label = b"secret/files/and/stuff"
 # any Bob that Alice grants access.
 policy_pubkey = ALICE.get_policy_encrypting_key_from_label(label)
 
-#####################################
-# Mitchel, the conditional enforcer #
-#####################################
-# Mitchel ethereum wallet
-# mitchel_wallet = Signer.from_signer_uri(MITCHEL_SIGNER_URI)
-# mitchel_password = 'q' # input(f'Enter password to unlock {ALICE_ETH_ADDRESS}: ')
-# mitchel_wallet.unlock_account(account=MITCHEL_ETH_ADDRESS, password=mitchel_password)
-
-# MITCHEL = Alice(
-#     domain=DOMAIN,
-#     known_nodes=[SEEDNODE],
-#     provider_uri=PROVIDER_URI,
-#     checksum_address=MITCHEL_ETH_ADDRESS,
-#     signer=mitchel_wallet,
-#     client_password=mitchel_password
-#     )
-
 BOB = Bob(
     known_nodes=[SEEDNODE],
     domain=DOMAIN,
@@ -175,33 +158,52 @@ policy_info = {
 # policy.treasure_map_publisher.block_until_complete()
 #
 
+ghost_of_alice = Alice.from_public_keys(verifying_key=ALICE.stamp)
+
+print('>>>>>>' + bytes(ALICE.stamp).hex())
+print('>>>>>>' + bytes(ghost_of_alice.stamp).hex())
+
 #####################
 # Alice registers the frags through a backchannel with
 # Mitchel.
 #
 # Then Alice dies :`(
 #####################
-# ALICE.disenchant()
-# del ALICE
+ALICE.disenchant()
+del ALICE
 
 #####################
 # Mitchel grants access to Alice's document to Bob #
 #####################
-ghost_of_alice = Alice.from_public_keys(verifying_key=ALICE.stamp)
 
-print('>>>>>>' + bytes(ALICE.stamp).hex())
-print('>>>>>>' + bytes(ghost_of_alice.stamp).hex())
+#####################################
+# Mitchel, the conditional enforcer #
+#####################################
+# Mitchel ethereum wallet
+mitchel_wallet = Signer.from_signer_uri(MITCHEL_SIGNER_URI)
+mitchel_password = 'q' # input(f'Enter password to unlock {ALICE_ETH_ADDRESS}: ')
+mitchel_wallet.unlock_account(account=MITCHEL_ETH_ADDRESS, password=mitchel_password)
 
-grantor = ALICE
+MITCHEL = Alice(
+    domain=DOMAIN,
+    known_nodes=[SEEDNODE],
+    provider_uri=PROVIDER_URI,
+    checksum_address=MITCHEL_ETH_ADDRESS,
+    signer=mitchel_wallet,
+    client_password=mitchel_password
+    )
 
-policy = ALICE.grant(BOB,
+
+grantor = MITCHEL
+
+policy = grantor.grant(BOB,
                      label=policy_info['label'],
                      m=policy_info['m'],
                     n=len(list(policy_info['kfrags'])),
                      expiration=policy_end_datetime,
                        rate=Web3.toWei(50, 'gwei'),
-                       # public_key=policy_info['public_key'],
-                       # kfrags=policy_info['kfrags']
+                       public_key=policy_info['public_key'],
+                       kfrags=policy_info['kfrags'],
                        )
 
 # assert policy.public_key == policy_info['public_key']
