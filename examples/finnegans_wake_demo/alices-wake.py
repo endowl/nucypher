@@ -196,6 +196,7 @@ MITCHEL = Alice(
 #
 # ALICE.transacting_power.activate(alice_password)
 grantor = MITCHEL
+grantor.transacting_power.activate(mitchel_password)
 
 policy = grantor.grant(BOB,
                      label=policy_info['label'],
