@@ -233,11 +233,12 @@ class Alice(Character, BlockchainPolicyAuthor):
         Generates KFrags and attaches them.
         """
 
+        pk = policy_params.pop('public_key', None)
+        frags = policy_params.pop('kfrags', None)
+
         policy_params = self.generate_policy_parameters(**policy_params)
         N = policy_params.pop('n')
 
-        pk = policy_params.get('public_key')
-        frags = policy_params.get('kfrags')
         if pk and frags:
             public_key = pk
             kfrags = frags

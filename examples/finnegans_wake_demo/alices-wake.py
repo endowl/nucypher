@@ -21,12 +21,16 @@ import sys
 import datetime
 import maya
 from umbral.keys import UmbralPublicKey
+from web3.main import Web3
 
+from nucypher.blockchain.eth.signers.base import Signer
 from nucypher.characters.lawful import Alice, Bob, Ursula
 from nucypher.characters.lawful import Enrico as Enrico
-from nucypher.config.constants import TEMPORARY_DOMAIN
 from nucypher.network.middleware import RestMiddleware
 from nucypher.utilities.logging import GlobalLoggerSettings
+
+from nucypher.crypto.powers import (CryptoPower, CryptoPowerUp, DecryptingPower, DelegatingPower, NoSigningPower,
+                                    SigningPower)
 
 ######################
 # Boring setup stuff #
@@ -53,17 +57,27 @@ GlobalLoggerSettings.start_console_logging()
 # run like this: python finnegans-wake-demo.py 172.28.1.3:11500
 # otherwise the default will be fine.
 
-try:
-    SEEDNODE_URI = sys.argv[1]
-except IndexError:
-    SEEDNODE_URI = "localhost:11500"
+SEEDNODE_URI = "https://lynx.nucypher.network:9151"
+SEEDNODE = Ursula.from_seed_and_stake_info(SEEDNODE_URI)
 
-##############################################
-# Ursula, the Untrusted Re-Encryption Proxy  #
-##############################################
-ursula = Ursula.from_seed_and_stake_info(seed_uri=SEEDNODE_URI,
-                                         federated_only=True,
-                                         minimum_stake=0)
+DOMAIN = 'lynx'
+
+
+# Replace with ethereum RPC endpoint
+ETH_PROVIDER = ''
+PROVIDER_URI = os.environ.get('NUCYPHER_PROVIDER_URI', ETH_PROVIDER)
+
+# Replace with signer URI
+WALLET_FILEPATH = ''
+ETH_WALLET = f'keystore://{WALLET_FILEPATH}'
+ALICE_SIGNER_URI = os.environ.get('ALICE_SIGNER_URI', ETH_WALLET)
+MITCHEL_SIGNER_URI = os.environ.get('MITCHEL_SIGNER_URI', ETH_WALLET)
+
+# Replace with alice's ethereum address
+ETH_ADDRESS = ''
+ALICE_ETH_ADDRESS = os.environ.get('ALICE_ETH_ADDRESS', ETH_ADDRESS)
+MITCHEL_ETH_ADDRESS = os.environ.get('MITCHEL_ETH_ADDRESS', ETH_ADDRESS)
+
 
 # Here are our Policy details.
 policy_end_datetime = maya.now() + datetime.timedelta(days=5)
@@ -73,12 +87,24 @@ label = b"secret/files/and/stuff"
 ######################################
 # Alice, the Authority of the Policy #
 ######################################
+# Alice ethereum wallet
+alice_wallet = Signer.from_signer_uri(ALICE_SIGNER_URI)
+alice_password = 'q' # input(f'Enter password to unlock {ALICE_ETH_ADDRESS}: ')
+alice_wallet.unlock_account(account=ALICE_ETH_ADDRESS, password=alice_password)
 
-ALICE = Alice(network_middleware=RestMiddleware(),
-              domain=TEMPORARY_DOMAIN,
-              known_nodes=[ursula],
-              learn_on_same_thread=True,
-              federated_only=True)
+ALICE = Alice(
+    domain=DOMAIN,
+    known_nodes=[SEEDNODE],
+    provider_uri=PROVIDER_URI,
+    checksum_address=ALICE_ETH_ADDRESS,
+    signer=alice_wallet,
+    client_password=alice_password
+)
+
+# Here are our Policy details.
+policy_end_datetime = maya.now() + datetime.timedelta(days=5)
+m, n = 2, 3
+label = b"secret/files/and/stuff"
 
 # Alice can get the public key even before creating the policy.
 # From this moment on, any Data Source that knows the public key
@@ -86,29 +112,28 @@ ALICE = Alice(network_middleware=RestMiddleware(),
 # any Bob that Alice grants access.
 policy_pubkey = ALICE.get_policy_encrypting_key_from_label(label)
 
-print('>>>>>>' + policy_pubkey.to_bytes().hex())
+#####################################
+# Mitchel, the conditional enforcer #
+#####################################
+# Mitchel ethereum wallet
+# mitchel_wallet = Signer.from_signer_uri(MITCHEL_SIGNER_URI)
+# mitchel_password = 'q' # input(f'Enter password to unlock {ALICE_ETH_ADDRESS}: ')
+# mitchel_wallet.unlock_account(account=MITCHEL_ETH_ADDRESS, password=mitchel_password)
 
-# AlicesRememberance = Alice(
-#     domain=TEMPORARY_DOMAIN,
-#     known_nodes=[ursula],
-#     learn_on_same_thread=True,
-#     federated_only=True,
-#     is_me=False,
-# )
+# MITCHEL = Alice(
+#     domain=DOMAIN,
+#     known_nodes=[SEEDNODE],
+#     provider_uri=PROVIDER_URI,
+#     checksum_address=MITCHEL_ETH_ADDRESS,
+#     signer=mitchel_wallet,
+#     client_password=mitchel_password
+#     )
 
-MITCHEL = Alice(network_middleware=RestMiddleware(),
-              domain=TEMPORARY_DOMAIN,
-              known_nodes=[ursula],
-              learn_on_same_thread=True,
-              federated_only=True)
-
-
-BOB = Bob(known_nodes=[ursula],
-          domain=TEMPORARY_DOMAIN,
-          network_middleware=RestMiddleware(),
-          federated_only=True,
-          start_learning_now=True,
-          learn_on_same_thread=True)
+BOB = Bob(
+    known_nodes=[SEEDNODE],
+    domain=DOMAIN,
+    provider_uri=PROVIDER_URI
+)
 
 ALICE.start_learning_loop(now=True)
 ALICE.block_until_number_of_known_nodes_is(8, timeout=30, learn_on_this_thread=True)  # In case the fleet isn't fully spun up yet, as sometimes happens on CI.
@@ -130,12 +155,16 @@ print(bytes(ALICE.stamp).hex())
 # For the demo, we need a way to share with Bob some additional info
 # about the policy, so we store it in a JSON file
 policy_info = {
-    # "policy_pubkey": policy.public_key.to_bytes().hex(),
-    "public_key": ALICE.stamp,
+    "alice_pubkey": ALICE.stamp,
+    "public_key": public_key, #ALICE.stamp,
     "label": label,
     "m": m,
     "kfrags": kfrags
 }
+
+# card = ALICE.get_card()
+# print(card.to_hex())
+
 
 # policy = ALICE.grant(BOB,
 #                      label,
@@ -158,16 +187,22 @@ policy_info = {
 #####################
 # Mitchel grants access to Alice's document to Bob #
 #####################
-MITCHEL.start_learning_loop(now=True)
-MITCHEL.block_until_number_of_known_nodes_is(8, timeout=30, learn_on_this_thread=True)  # In case the fleet isn't fully spun up yet, as sometimes happens on CI.
+ghost_of_alice = Alice.from_public_keys(verifying_key=ALICE.stamp)
 
-policy = MITCHEL.grant(BOB,
+print('>>>>>>' + bytes(ALICE.stamp).hex())
+print('>>>>>>' + bytes(ghost_of_alice.stamp).hex())
+
+grantor = ALICE
+
+policy = ALICE.grant(BOB,
                      label=policy_info['label'],
                      m=policy_info['m'],
                     n=len(list(policy_info['kfrags'])),
                      expiration=policy_end_datetime,
-                    public_key=policy_info['public_key'],
-                       kfrag=policy_info['kfrags'])
+                       rate=Web3.toWei(50, 'gwei'),
+                       # public_key=policy_info['public_key'],
+                       # kfrags=policy_info['kfrags']
+                       )
 
 # assert policy.public_key == policy_info['public_key']
 policy.treasure_map_publisher.block_until_complete()
@@ -177,7 +212,8 @@ policy.treasure_map_publisher.block_until_complete()
 #####################
 BOB.block_until_number_of_known_nodes_is(8, timeout=30, learn_on_this_thread=True)  # In case the fleet isn't fully spun up yet, as sometimes happens on CI.
 
-BOB.join_policy(policy_info['label'], bytes(MITCHEL.stamp))
+BOB.join_policy(policy_info['label'], bytes(grantor.stamp))
+# BOB.join_policy(policy_info['label'], bytes(MITCHEL.stamp))
 
 # Now that Bob has joined the Policy, let's show how Enrico the Encryptor
 # can share data with the members of this Policy and then how Bob retrieves it.
@@ -216,7 +252,9 @@ for counter, plaintext in enumerate(finnegans_wake):
     )
 
     # Now Bob can retrieve the original message.
-    mitchels_well_known_public_key = UmbralPublicKey.from_bytes(bytes(MITCHEL.stamp))
+    # mitchels_well_known_public_key = UmbralPublicKey.from_bytes(bytes(ghost_of_alice.stamp))
+    # mitchels_well_known_public_key = ghost_of_alice.stamp
+    mitchels_well_known_public_key = grantor.stamp
     delivered_cleartexts = BOB.retrieve(single_passage_ciphertext,
                                         enrico=enrico_as_understood_by_bob,
                                         alice_verifying_key=mitchels_well_known_public_key,
